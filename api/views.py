@@ -24,8 +24,7 @@ def serialize_recipe(recipe):
 def serialize_meal_plan_entry(entry):
     return {
         "id": entry.id,
-        "day": entry.day,
-        "dateLabel": entry.date_label,
+        "date": entry.date.isoformat(),
         "mealType": entry.meal_type,
         "recipe": serialize_recipe(entry.recipe) if entry.recipe else None,
     }
@@ -108,7 +107,7 @@ def me(request):
 
 @api_view(["GET"])
 def recipes(request):
-    recipe_list = Recipe.objects.filter(is_suggestion=False)
+    recipe_list = Recipe.objects.filter(user=request.user, is_suggestion=False)
     return Response({"recipes": [serialize_recipe(recipe) for recipe in recipe_list]})
 
 
@@ -120,5 +119,5 @@ def suggestions(request):
 
 @api_view(["GET"])
 def meal_plan(request):
-    entries = MealPlanEntry.objects.select_related("recipe")
+    entries = MealPlanEntry.objects.filter(user=request.user).select_related("recipe")
     return Response({"mealPlan": [serialize_meal_plan_entry(entry) for entry in entries]})

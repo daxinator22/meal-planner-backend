@@ -12,5 +12,5 @@ class RecipeAdmin(admin.ModelAdmin):
 
 @admin.register(MealPlanEntry)
 class MealPlanEntryAdmin(admin.ModelAdmin):
-    list_display = ('day', 'date_label', 'meal_type', 'recipe')
-    search_fields = ('day', 'meal_type', 'recipe__name')
+    list_display = ('date', 'meal_type', 'recipe')
+    search_fields = ('meal_type', 'recipe__name')

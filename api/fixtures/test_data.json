@@ -1,8 +1,27 @@
 [
   {
+    "model": "auth.user",
+    "pk": 1,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$R8hv9hcgPBWveNjgWsJoEU$ubZsYSESz14btH9pcyLv548H61cyOfLD3nRlp7KkHJw=",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "demo",
+      "first_name": "",
+      "last_name": "",
+      "email": "demo@example.com",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2026-05-14T00:00:00Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
     "model": "api.recipe",
     "pk": 1,
     "fields": {
+      "user": 1,
       "name": "Lemon Herb Chicken Bowls",
       "description": "Grilled chicken served with rice, cucumber, tomatoes, and a lemon herb yogurt sauce.",
       "prep_time": 35,
@@ -16,6 +35,7 @@
     "model": "api.recipe",
     "pk": 2,
     "fields": {
+      "user": 1,
       "name": "Turkey Taco Skillet",
       "description": "A quick one-pan taco skillet with ground turkey, beans, corn, and warm spices.",
       "prep_time": 25,
@@ -29,6 +49,7 @@
     "model": "api.recipe",
     "pk": 3,
     "fields": {
+      "user": 1,
       "name": "Salmon Rice Plates",
       "description": "Roasted salmon with steamed rice, broccoli, and a simple soy ginger glaze.",
       "prep_time": 30,
@@ -42,6 +63,7 @@
     "model": "api.recipe",
     "pk": 4,
     "fields": {
+      "user": 1,
       "name": "Veggie Pesto Pasta",
       "description": "Pasta tossed with pesto, zucchini, spinach, tomatoes, and parmesan.",
       "prep_time": 20,
@@ -55,6 +77,7 @@
     "model": "api.recipe",
     "pk": 5,
     "fields": {
+      "user": 1,
       "name": "Greek Yogurt Parfaits",
       "description": "Layered Greek yogurt, berries, granola, and honey for an easy breakfast.",
       "prep_time": 10,
@@ -68,6 +91,7 @@
     "model": "api.recipe",
     "pk": 6,
     "fields": {
+      "user": 1,
       "name": "Sheet Pan Fajita Bowls",
       "description": "Chicken, peppers, and onions roasted on one sheet pan and served over rice.",
       "prep_time": 35,
@@ -81,6 +105,7 @@
     "model": "api.recipe",
     "pk": 7,
     "fields": {
+      "user": 1,
       "name": "Chickpea Curry",
       "description": "A pantry-friendly chickpea curry simmered with coconut milk and warm spices.",
       "prep_time": 30,
@@ -94,6 +119,7 @@
     "model": "api.recipe",
     "pk": 8,
     "fields": {
+      "user": 1,
       "name": "Breakfast Burritos",
       "description": "Freezer-friendly burritos filled with eggs, potatoes, cheese, and salsa.",
       "prep_time": 40,
@@ -107,8 +133,8 @@
     "model": "api.mealplanentry",
     "pk": 1,
     "fields": {
-      "day": "Monday",
-      "date_label": "12",
+      "user": 1,
+      "date": "2026-05-11",
       "meal_type": "Dinner",
       "recipe": 1
     }
@@ -117,8 +143,8 @@
     "model": "api.mealplanentry",
     "pk": 2,
     "fields": {
-      "day": "Tuesday",
-      "date_label": "13",
+      "user": 1,
+      "date": "2026-05-12",
       "meal_type": "Dinner",
       "recipe": 2
     }
@@ -127,8 +153,8 @@
     "model": "api.mealplanentry",
     "pk": 3,
     "fields": {
-      "day": "Wednesday",
-      "date_label": "14",
+      "user": 1,
+      "date": "2026-05-13",
       "meal_type": "Dinner",
       "recipe": 3
     }
@@ -137,8 +163,8 @@
     "model": "api.mealplanentry",
     "pk": 4,
     "fields": {
-      "day": "Thursday",
-      "date_label": "15",
+      "user": 1,
+      "date": "2026-05-14",
       "meal_type": "Dinner",
       "recipe": 4
     }
@@ -147,8 +173,8 @@
     "model": "api.mealplanentry",
     "pk": 5,
     "fields": {
-      "day": "Friday",
-      "date_label": "16",
+      "user": 1,
+      "date": "2026-05-15",
       "meal_type": "Breakfast",
       "recipe": 5
     }
@@ -157,8 +183,8 @@
     "model": "api.mealplanentry",
     "pk": 6,
     "fields": {
-      "day": "Saturday",
-      "date_label": "17",
+      "user": 1,
+      "date": "2026-05-16",
       "meal_type": "Dinner",
       "recipe": null
     }
@@ -167,8 +193,8 @@
     "model": "api.mealplanentry",
     "pk": 7,
     "fields": {
-      "day": "Sunday",
-      "date_label": "18",
+      "user": 1,
+      "date": "2026-05-17",
       "meal_type": "Dinner",
       "recipe": null
     }
