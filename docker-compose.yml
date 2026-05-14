@@ -1,6 +1,7 @@
 services:
   web:
     build: .
+    container_name: mp-backend
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
