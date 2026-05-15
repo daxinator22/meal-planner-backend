@@ -27,6 +27,13 @@ class ApiEndpointTests(TestCase):
             name="Lemon Herb Chicken Bowls",
             description="Grilled chicken with rice and vegetables.",
             prep_time=35,
+            cook_time=20,
+            servings=4,
+            calories=520,
+            protein="38.5",
+            carbs="48.0",
+            total_fat="18.0",
+            saturated_fat="4.5",
             tags=["Healthy", "Dinner"],
             ingredients=["Chicken", "Rice"],
             instructions=["Cook rice", "Grill chicken"],
@@ -36,6 +43,13 @@ class ApiEndpointTests(TestCase):
             name="Other User Pasta",
             description="A recipe owned by another user.",
             prep_time=20,
+            cook_time=15,
+            servings=2,
+            calories=610,
+            protein="22.0",
+            carbs="84.0",
+            total_fat="19.5",
+            saturated_fat="6.0",
             tags=["Dinner"],
             ingredients=["Pasta"],
             instructions=["Cook pasta"],
@@ -45,6 +59,13 @@ class ApiEndpointTests(TestCase):
             name="Sheet Pan Fajita Bowls",
             description="Peppers, onions, and chicken roasted together.",
             prep_time=35,
+            cook_time=25,
+            servings=4,
+            calories=480,
+            protein="36.0",
+            carbs="42.0",
+            total_fat="16.5",
+            saturated_fat="3.5",
             tags=["Suggested", "Sheet Pan"],
             ingredients=["Chicken", "Peppers"],
             instructions=["Slice ingredients", "Roast on sheet pan"],
@@ -79,6 +100,15 @@ class ApiEndpointTests(TestCase):
                     "name": "Lemon Herb Chicken Bowls",
                     "description": "Grilled chicken with rice and vegetables.",
                     "prepTime": 35,
+                    "cookTime": 20,
+                    "servings": 4,
+                    "macrosPerServing": {
+                        "calories": 520,
+                        "protein": 38.5,
+                        "carbs": 48.0,
+                        "totalFat": 18.0,
+                        "saturatedFat": 4.5,
+                    },
                     "tags": ["Healthy", "Dinner"],
                     "ingredients": ["Chicken", "Rice"],
                     "instructions": ["Cook rice", "Grill chicken"],
@@ -98,6 +128,15 @@ class ApiEndpointTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["suggestions"][0]["id"], self.suggestion.id)
         self.assertEqual(response.json()["suggestions"][0]["name"], "Sheet Pan Fajita Bowls")
+        self.assertEqual(response.json()["suggestions"][0]["cookTime"], 25)
+        self.assertEqual(response.json()["suggestions"][0]["servings"], 4)
+        self.assertEqual(response.json()["suggestions"][0]["macrosPerServing"], {
+            "calories": 480,
+            "protein": 36.0,
+            "carbs": 42.0,
+            "totalFat": 16.5,
+            "saturatedFat": 3.5,
+        })
 
     def test_suggestions_endpoint_returns_global_suggestions(self):
         response = self.client.get("/api/suggestions/", **self.auth_header)
@@ -112,6 +151,15 @@ class ApiEndpointTests(TestCase):
         self.assertEqual(len(response.json()["mealPlan"]), 2)
         self.assertEqual(response.json()["mealPlan"][0]["date"], "2026-05-11")
         self.assertEqual(response.json()["mealPlan"][0]["recipe"]["name"], "Lemon Herb Chicken Bowls")
+        self.assertEqual(response.json()["mealPlan"][0]["recipe"]["cookTime"], 20)
+        self.assertEqual(response.json()["mealPlan"][0]["recipe"]["servings"], 4)
+        self.assertEqual(response.json()["mealPlan"][0]["recipe"]["macrosPerServing"], {
+            "calories": 520,
+            "protein": 38.5,
+            "carbs": 48.0,
+            "totalFat": 18.0,
+            "saturatedFat": 4.5,
+        })
         self.assertIsNone(response.json()["mealPlan"][1]["recipe"])
 
     def test_meal_plan_endpoint_excludes_other_users_entries(self):

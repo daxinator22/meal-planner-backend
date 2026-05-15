@@ -5,7 +5,7 @@ from .models import MealPlanEntry, Recipe
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'prep_time', 'is_suggestion')
+    list_display = ('name', 'prep_time', 'cook_time', 'servings', 'calories', 'is_suggestion')
     list_filter = ('is_suggestion',)
     search_fields = ('name', 'description')
 
