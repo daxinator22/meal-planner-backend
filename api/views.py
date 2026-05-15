@@ -1,10 +1,11 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from rest_framework import status
-from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import MealPlanEntry, Recipe
 
@@ -38,6 +39,15 @@ def serialize_user(user):
     }
 
 
+def serialize_auth_response(user):
+    refresh = RefreshToken.for_user(user)
+    return {
+        "access": str(refresh.access_token),
+        "refresh": str(refresh),
+        "user": serialize_user(user),
+    }
+
+
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def signup(request):
@@ -64,9 +74,8 @@ def signup(request):
         )
 
     user = User.objects.create_user(username=username, email=email, password=password)
-    token = Token.objects.create(user=user)
     return Response(
-        {"token": token.key, "user": serialize_user(user)},
+        serialize_auth_response(user),
         status=status.HTTP_201_CREATED,
     )
 
@@ -90,13 +99,26 @@ def login(request):
             status=status.HTTP_401_UNAUTHORIZED,
         )
 
-    token, _ = Token.objects.get_or_create(user=user)
-    return Response({"token": token.key, "user": serialize_user(user)})
+    return Response(serialize_auth_response(user))
 
 
 @api_view(["POST"])
 def logout(request):
-    request.user.auth_token.delete()
+    refresh_token = request.data.get("refresh")
+    if not refresh_token:
+        return Response(
+            {"error": "Refresh token is required"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        RefreshToken(refresh_token).blacklist()
+    except TokenError:
+        return Response(
+            {"error": "Invalid refresh token"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 

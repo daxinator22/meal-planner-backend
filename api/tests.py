@@ -1,6 +1,8 @@
+from datetime import timedelta
+
 from django.contrib.auth.models import User
 from django.test import TestCase
-from rest_framework.authtoken.models import Token
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from .models import MealPlanEntry, Recipe
 
@@ -12,8 +14,9 @@ class ApiEndpointTests(TestCase):
             email="testuser@example.com",
             password="password123",
         )
-        self.token = Token.objects.create(user=self.user)
-        self.auth_header = {"HTTP_AUTHORIZATION": f"Token {self.token.key}"}
+        self.refresh_token = RefreshToken.for_user(self.user)
+        self.access_token = self.refresh_token.access_token
+        self.auth_header = {"HTTP_AUTHORIZATION": f"Bearer {self.access_token}"}
         self.other_user = User.objects.create_user(
             username="otheruser",
             email="otheruser@example.com",
@@ -121,7 +124,7 @@ class ApiEndpointTests(TestCase):
         ]
         self.assertNotIn("Other User Pasta", meal_plan_recipes)
 
-    def test_login_returns_token_for_valid_credentials(self):
+    def test_login_returns_tokens_for_valid_credentials(self):
         response = self.client.post(
             "/api/auth/login/",
             {"username": "testuser", "password": "password123"},
@@ -129,7 +132,8 @@ class ApiEndpointTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["token"], self.token.key)
+        self.assertIn("access", response.json())
+        self.assertIn("refresh", response.json())
         self.assertEqual(response.json()["user"], {
             "id": self.user.id,
             "username": "testuser",
@@ -146,7 +150,7 @@ class ApiEndpointTests(TestCase):
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.json(), {"error": "Invalid credentials"})
 
-    def test_signup_creates_user_and_returns_token(self):
+    def test_signup_creates_user_and_returns_tokens(self):
         response = self.client.post(
             "/api/auth/signup/",
             {
@@ -164,7 +168,8 @@ class ApiEndpointTests(TestCase):
             "username": "newuser",
             "email": "newuser@example.com",
         })
-        self.assertEqual(response.json()["token"], Token.objects.get(user=user).key)
+        self.assertIn("access", response.json())
+        self.assertIn("refresh", response.json())
         self.assertTrue(user.check_password("password123"))
 
     def test_signup_requires_email(self):
@@ -206,7 +211,7 @@ class ApiEndpointTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {"error": "Email is already in use"})
 
-    def test_signup_token_can_access_me_endpoint(self):
+    def test_signup_access_token_can_access_me_endpoint(self):
         signup_response = self.client.post(
             "/api/auth/signup/",
             {
@@ -216,11 +221,11 @@ class ApiEndpointTests(TestCase):
             },
             content_type="application/json",
         )
-        token = signup_response.json()["token"]
+        access_token = signup_response.json()["access"]
 
         response = self.client.get(
             "/api/auth/me/",
-            HTTP_AUTHORIZATION=f"Token {token}",
+            HTTP_AUTHORIZATION=f"Bearer {access_token}",
         )
 
         self.assertEqual(response.status_code, 200)
@@ -244,11 +249,83 @@ class ApiEndpointTests(TestCase):
 
         self.assertEqual(response.status_code, 401)
 
-    def test_logout_deletes_token(self):
-        response = self.client.post("/api/auth/logout/", **self.auth_header)
+    def test_me_returns_401_with_invalid_access_token(self):
+        response = self.client.get(
+            "/api/auth/me/",
+            HTTP_AUTHORIZATION="Bearer not-a-token",
+        )
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_me_returns_401_with_expired_access_token(self):
+        expired_access = AccessToken.for_user(self.user)
+        expired_access.set_exp(lifetime=timedelta(seconds=-1))
+
+        response = self.client.get(
+            "/api/auth/me/",
+            HTTP_AUTHORIZATION=f"Bearer {expired_access}",
+        )
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_refresh_returns_access_for_valid_refresh_token(self):
+        response = self.client.post(
+            "/api/auth/refresh/",
+            {"refresh": str(self.refresh_token)},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("access", response.json())
+
+    def test_refresh_returns_401_for_invalid_refresh_token(self):
+        response = self.client.post(
+            "/api/auth/refresh/",
+            {"refresh": "not-a-token"},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_refresh_returns_401_for_expired_refresh_token(self):
+        expired_refresh = RefreshToken.for_user(self.user)
+        expired_refresh.set_exp(lifetime=timedelta(seconds=-1))
+
+        response = self.client.post(
+            "/api/auth/refresh/",
+            {"refresh": str(expired_refresh)},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_logout_blacklists_refresh_token(self):
+        response = self.client.post(
+            "/api/auth/logout/",
+            {"refresh": str(self.refresh_token)},
+            content_type="application/json",
+            **self.auth_header,
+        )
 
         self.assertEqual(response.status_code, 204)
-        self.assertFalse(Token.objects.filter(user=self.user).exists())
+
+        refresh_response = self.client.post(
+            "/api/auth/refresh/",
+            {"refresh": str(self.refresh_token)},
+            content_type="application/json",
+        )
+        self.assertEqual(refresh_response.status_code, 401)
+
+    def test_logout_requires_refresh_token(self):
+        response = self.client.post(
+            "/api/auth/logout/",
+            {},
+            content_type="application/json",
+            **self.auth_header,
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {"error": "Refresh token is required"})
 
     def test_recipes_endpoint_returns_401_without_token(self):
         response = self.client.get("/api/recipes/")
