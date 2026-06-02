@@ -19,9 +19,6 @@ class Migration(migrations.Migration):
                 ("name", models.CharField(max_length=120)),
                 ("description", models.TextField()),
                 ("prep_time", models.PositiveIntegerField()),
-                ("tags", models.JSONField(blank=True, default=list)),
-                ("ingredients", models.JSONField(blank=True, default=list)),
-                ("instructions", models.JSONField(blank=True, default=list)),
                 ("is_suggestion", models.BooleanField(default=False)),
                 (
                     "user",
@@ -33,6 +30,42 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={"ordering": ["name"]},
+        ),
+        migrations.CreateModel(
+            name="RecipeIngredient",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("position", models.PositiveIntegerField()),
+                ("name", models.CharField(max_length=160)),
+                ("amount", models.DecimalField(blank=True, decimal_places=2, max_digits=8, null=True)),
+                ("unit", models.CharField(blank=True, max_length=40)),
+                (
+                    "recipe",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="ingredients",
+                        to="api.recipe",
+                    ),
+                ),
+            ],
+            options={"ordering": ["position", "id"]},
+        ),
+        migrations.CreateModel(
+            name="RecipeInstructionStep",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("position", models.PositiveIntegerField()),
+                ("text", models.TextField()),
+                (
+                    "recipe",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="instruction_steps",
+                        to="api.recipe",
+                    ),
+                ),
+            ],
+            options={"ordering": ["position", "id"]},
         ),
         migrations.CreateModel(
             name="MealPlanEntry",

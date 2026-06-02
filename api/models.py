@@ -18,9 +18,6 @@ class Recipe(models.Model):
     carbs = models.DecimalField(max_digits=6, decimal_places=1)
     total_fat = models.DecimalField(max_digits=6, decimal_places=1)
     saturated_fat = models.DecimalField(max_digits=6, decimal_places=1)
-    tags = models.JSONField(default=list, blank=True)
-    ingredients = models.JSONField(default=list, blank=True)
-    instructions = models.JSONField(default=list, blank=True)
     is_suggestion = models.BooleanField(default=False)
 
     class Meta:
@@ -28,6 +25,42 @@ class Recipe(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class RecipeIngredient(models.Model):
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE,
+        related_name="ingredients",
+    )
+    position = models.PositiveIntegerField()
+    name = models.CharField(max_length=160)
+    amount = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)
+    unit = models.CharField(max_length=40, blank=True)
+
+    class Meta:
+        ordering = ["position", "id"]
+
+    def __str__(self):
+        amount = "" if self.amount is None else f"{self.amount:f}".rstrip("0").rstrip(".") + " "
+        unit = f"{self.unit} " if self.unit else ""
+        return f"{amount}{unit}{self.name}"
+
+
+class RecipeInstructionStep(models.Model):
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE,
+        related_name="instruction_steps",
+    )
+    position = models.PositiveIntegerField()
+    text = models.TextField()
+
+    class Meta:
+        ordering = ["position", "id"]
+
+    def __str__(self):
+        return f"{self.position}. {self.text}"
 
 
 class MealPlanEntry(models.Model):

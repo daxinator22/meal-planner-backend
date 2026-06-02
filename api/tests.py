@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
-from .models import MealPlanEntry, Recipe
+from .models import MealPlanEntry, Recipe, RecipeIngredient, RecipeInstructionStep
 
 
 class ApiEndpointTests(TestCase):
@@ -34,10 +34,11 @@ class ApiEndpointTests(TestCase):
             carbs="48.0",
             total_fat="18.0",
             saturated_fat="4.5",
-            tags=["Healthy", "Dinner"],
-            ingredients=["Chicken", "Rice"],
-            instructions=["Cook rice", "Grill chicken"],
         )
+        RecipeIngredient.objects.create(recipe=self.recipe, position=1, name="Chicken", amount="1.50", unit="lb")
+        RecipeIngredient.objects.create(recipe=self.recipe, position=2, name="Rice", amount="1.00", unit="cup")
+        RecipeInstructionStep.objects.create(recipe=self.recipe, position=1, text="Cook rice")
+        RecipeInstructionStep.objects.create(recipe=self.recipe, position=2, text="Grill chicken")
         self.other_recipe = Recipe.objects.create(
             user=self.other_user,
             name="Other User Pasta",
@@ -50,10 +51,9 @@ class ApiEndpointTests(TestCase):
             carbs="84.0",
             total_fat="19.5",
             saturated_fat="6.0",
-            tags=["Dinner"],
-            ingredients=["Pasta"],
-            instructions=["Cook pasta"],
         )
+        RecipeIngredient.objects.create(recipe=self.other_recipe, position=1, name="Pasta", amount="12.00", unit="oz")
+        RecipeInstructionStep.objects.create(recipe=self.other_recipe, position=1, text="Cook pasta")
         self.suggestion = Recipe.objects.create(
             user=self.other_user,
             name="Sheet Pan Fajita Bowls",
@@ -66,11 +66,12 @@ class ApiEndpointTests(TestCase):
             carbs="42.0",
             total_fat="16.5",
             saturated_fat="3.5",
-            tags=["Suggested", "Sheet Pan"],
-            ingredients=["Chicken", "Peppers"],
-            instructions=["Slice ingredients", "Roast on sheet pan"],
             is_suggestion=True,
         )
+        RecipeIngredient.objects.create(recipe=self.suggestion, position=1, name="Chicken", amount="1.50", unit="lb")
+        RecipeIngredient.objects.create(recipe=self.suggestion, position=2, name="Peppers", amount="3.00", unit="")
+        RecipeInstructionStep.objects.create(recipe=self.suggestion, position=1, text="Slice ingredients")
+        RecipeInstructionStep.objects.create(recipe=self.suggestion, position=2, text="Roast on sheet pan")
         MealPlanEntry.objects.create(
             user=self.user,
             date="2026-05-11",
@@ -93,34 +94,161 @@ class ApiEndpointTests(TestCase):
         response = self.client.get("/api/recipes/", **self.auth_header)
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {
-            "recipes": [
-                {
-                    "id": self.recipe.id,
-                    "name": "Lemon Herb Chicken Bowls",
-                    "description": "Grilled chicken with rice and vegetables.",
-                    "prepTime": 35,
-                    "cookTime": 20,
-                    "servings": 4,
-                    "macrosPerServing": {
-                        "calories": 520,
-                        "protein": 38.5,
-                        "carbs": 48.0,
-                        "totalFat": 18.0,
-                        "saturatedFat": 4.5,
-                    },
-                    "tags": ["Healthy", "Dinner"],
-                    "ingredients": ["Chicken", "Rice"],
-                    "instructions": ["Cook rice", "Grill chicken"],
-                }
-            ]
-        })
+        recipe_response = response.json()["recipes"][0]
+        self.assertEqual(recipe_response["name"], "Lemon Herb Chicken Bowls")
+        self.assertEqual(recipe_response["ingredients"], [
+            {
+                "id": self.recipe.ingredients.get(position=1).id,
+                "position": 1,
+                "name": "Chicken",
+                "amount": 1.5,
+                "unit": "lb",
+            },
+            {
+                "id": self.recipe.ingredients.get(position=2).id,
+                "position": 2,
+                "name": "Rice",
+                "amount": 1.0,
+                "unit": "cup",
+            },
+        ])
+        self.assertEqual(recipe_response["instructions"], [
+            {
+                "id": self.recipe.instruction_steps.get(position=1).id,
+                "position": 1,
+                "text": "Cook rice",
+            },
+            {
+                "id": self.recipe.instruction_steps.get(position=2).id,
+                "position": 2,
+                "text": "Grill chicken",
+            },
+        ])
 
     def test_recipes_endpoint_excludes_other_users_recipes(self):
         response = self.client.get("/api/recipes/", **self.auth_header)
 
         recipe_names = [recipe["name"] for recipe in response.json()["recipes"]]
         self.assertNotIn("Other User Pasta", recipe_names)
+
+    def test_recipes_endpoint_creates_user_recipe(self):
+        response = self.client.post(
+            "/api/recipes/",
+            {
+                "name": "Chicken Rice Bowl",
+                "description": "Simple weeknight dinner.",
+                "prepTime": 20,
+                "cookTime": 25,
+                "servings": 4,
+                "macrosPerServing": {
+                    "calories": 520,
+                    "protein": 38.5,
+                    "carbs": 48.0,
+                    "totalFat": 18.0,
+                    "saturatedFat": 4.5,
+                },
+                "ingredients": [
+                    {"name": "Chicken", "amount": 1.5, "unit": "lb"},
+                    {"name": "Rice", "amount": 1, "unit": "cup"},
+                    {"name": "Broccoli", "amount": 2, "unit": "cups"},
+                ],
+                "instructions": [
+                    {"text": "Cook rice."},
+                    {"text": "Grill chicken."},
+                    {"text": "Assemble bowl."},
+                ],
+            },
+            content_type="application/json",
+            **self.auth_header,
+        )
+
+        self.assertEqual(response.status_code, 201)
+        recipe = Recipe.objects.get(name="Chicken Rice Bowl")
+        self.assertEqual(recipe.user, self.user)
+        self.assertFalse(recipe.is_suggestion)
+        created_recipe_response = response.json()["recipe"]
+        self.assertEqual(created_recipe_response["name"], "Chicken Rice Bowl")
+        self.assertEqual(created_recipe_response["ingredients"][0], {
+            "id": recipe.ingredients.get(position=1).id,
+            "position": 1,
+            "name": "Chicken",
+            "amount": 1.5,
+            "unit": "lb",
+        })
+        self.assertEqual(created_recipe_response["instructions"][0], {
+            "id": recipe.instruction_steps.get(position=1).id,
+            "position": 1,
+            "text": "Cook rice.",
+        })
+
+        list_response = self.client.get("/api/recipes/", **self.auth_header)
+        recipe_names = [recipe["name"] for recipe in list_response.json()["recipes"]]
+        self.assertIn("Chicken Rice Bowl", recipe_names)
+
+    def test_recipes_endpoint_returns_401_when_creating_without_token(self):
+        response = self.client.post(
+            "/api/recipes/",
+            {},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_recipes_endpoint_requires_fields_when_creating(self):
+        response = self.client.post(
+            "/api/recipes/",
+            {
+                "description": "Missing name.",
+                "prepTime": 20,
+                "cookTime": 25,
+                "servings": 4,
+                "macrosPerServing": {
+                    "calories": 520,
+                    "protein": 38.5,
+                    "carbs": 48.0,
+                    "totalFat": 18.0,
+                    "saturatedFat": 4.5,
+                },
+            },
+            content_type="application/json",
+            **self.auth_header,
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {"error": "name is required"})
+
+    def test_recipes_endpoint_does_not_create_user_suggestions(self):
+        response = self.client.post(
+            "/api/recipes/",
+            {
+                "name": "User Suggestion Attempt",
+                "description": "Should still be a user recipe.",
+                "prepTime": 15,
+                "cookTime": 10,
+                "servings": 2,
+                "macrosPerServing": {
+                    "calories": 320,
+                    "protein": 20.0,
+                    "carbs": 35.0,
+                    "totalFat": 12.0,
+                    "saturatedFat": 3.0,
+                },
+                "ingredients": [
+                    {"name": "Chicken", "amount": 1, "unit": "lb"},
+                ],
+                "instructions": [
+                    {"text": "Cook chicken."},
+                ],
+                "isSuggestion": True,
+                "is_suggestion": True,
+            },
+            content_type="application/json",
+            **self.auth_header,
+        )
+
+        self.assertEqual(response.status_code, 201)
+        recipe = Recipe.objects.get(name="User Suggestion Attempt")
+        self.assertFalse(recipe.is_suggestion)
 
     def test_suggestions_endpoint_returns_suggestions(self):
         response = self.client.get("/api/suggestions/", **self.auth_header)
