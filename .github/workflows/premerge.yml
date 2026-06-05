@@ -1,12 +1,12 @@
 name: Django Tests
 
 on:
-  push:
   pull_request:
+    types: ["opened", "synchronize", "reopened"]
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: jarvis 
 
     steps:
       - name: Check out repository
